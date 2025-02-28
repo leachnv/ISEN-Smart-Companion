@@ -17,9 +17,11 @@ import com.google.gson.Gson
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import androidx.lifecycle.viewmodel.compose.viewModel
+
 
 @Composable
-fun EventsScreen() {
+fun EventsScreen(agendaViewModel: AgendaViewModel = viewModel()) {
     val context = LocalContext.current
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -65,15 +67,33 @@ fun EventsScreen() {
                                 intent.putExtra("event_json", gson.toJson(event))
                                 context.startActivity(intent)
                             },
-                        colors = CardDefaults.cardColors(containerColor = Color.Red
-                        )
+                        colors = CardDefaults.cardColors(containerColor = Color.Red)
                     ) {
-                        Text(
-                            text = event.title,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = event.title,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "Date: ${event.date}",
+                                fontSize = 14.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Ajouter un bouton pour ajouter l'événement à l'agenda
+                            Button(
+                                onClick = {
+                                    agendaViewModel.toggleEventSelection(event)
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = if (event in agendaViewModel.selectedEvents) "Retirer de l'agenda" else "Ajouter à l'agenda",
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
                     }
                 }
             }

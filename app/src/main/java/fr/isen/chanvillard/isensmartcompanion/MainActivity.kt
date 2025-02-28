@@ -105,7 +105,7 @@ fun NavigationGraph(navController: NavHostController, modifier: Modifier) {
 
 
 // ✅ Modèle d'événement
-data class Event(val id: String, val title: String, val description: String, val date: String, val location: String, val category: String) {
+data class Event(val id: String, val title: String, val description: String, val date: String, val location: String, val category: String, var isSelected: Boolean = false) {
     fun getNumericId(): Int? {
         return id.toIntOrNull()
     }
