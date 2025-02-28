@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-kapt") // 🚀 Ajouté pour la compilation Room !
 }
 
 android {
@@ -27,13 +28,16 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
     kotlinOptions {
         jvmTarget = "11"
     }
+
     buildFeatures {
         compose = true
     }
@@ -41,37 +45,42 @@ android {
 
 dependencies {
 
+    // ✅ AndroidX Core
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+
+    // ✅ Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
 
-    // ✅ Ajout de Material Icons Extended
+    // ✅ Material Icons Extended
     implementation("androidx.compose.material:material-icons-extended:1.5.0")
 
-    // ✅ Ajout de la navigation Jetpack Compose
+    // ✅ Navigation Jetpack Compose
     implementation("androidx.navigation:navigation-compose:2.8.7")
+
+    // ✅ JSON & Réseau
     implementation("com.google.code.gson:gson:2.10.1")
-    implementation("com.squareup.retrofit2:retrofit:2.9.0") // Retrofit
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0") // Convertisseur Gson
-    implementation("com.google.ai.client.generativeai:generativeai:0.2.0") // Vérifie la dernière version sur la doc officielle
-    implementation("com.google.ai.client.generativeai:generativeai:0.6.0") // Vérifie la version la plus récente !
-    implementation (libs.androidx.room.runtime)  // Vérifiez la version la plus récente
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
-    implementation (libs.androidx.room.ktx)  // Extensions Kotlin pour Room
-    val compose_version = "1.4.0"  // Exemple de version de Compose
-    val material3_version = "1.0.1"  // Exemple de version de Material3
-    implementation ("androidx.compose.ui:ui:${compose_version}")
-    implementation ("androidx.compose.material3:material3:${material3_version}")
-    implementation ("androidx.compose.foundation:foundation:${compose_version}")
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.0")
-    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
+    // ✅ Google Gemini AI SDK
+    implementation("com.google.ai.client.generativeai:generativeai:0.6.0") // Vérifie la dernière version officielle !
 
+    // ✅ Room Database (⚠️ Kapt ajouté pour éviter ton erreur !)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    kapt("androidx.room:room-compiler:2.6.1") // ✅ Remplace par la dernière version stable
 
+    // ✅ Coroutines pour exécuter les tâches en arrière-plan
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
+
+    // ✅ Test & Debug
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
