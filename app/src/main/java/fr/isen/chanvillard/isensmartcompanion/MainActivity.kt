@@ -66,9 +66,9 @@ interface EventApiService {
 
 @Composable
 fun BottomNavigationBar(navController: NavHostController) {
-    val items = listOf("home", "events", "history")
-    val icons = listOf(Icons.Filled.Home, Icons.Filled.CalendarToday, Icons.Filled.History)
-    val labels = listOf("Accueil", "Événements", "Historique")
+    val items = listOf("home", "events", "history", "agenda")  // Ajoute "agenda" à la liste
+    val icons = listOf(Icons.Filled.Home, Icons.Filled.CalendarToday, Icons.Filled.History, Icons.Filled.CalendarToday)
+    val labels = listOf("Accueil", "Événements", "Historique", "Agenda")  // Label pour l'Agenda
 
     val currentRoute = navController.currentDestination?.route
 
@@ -91,14 +91,17 @@ fun BottomNavigationBar(navController: NavHostController) {
 }
 
 
+
 @Composable
 fun NavigationGraph(navController: NavHostController, modifier: Modifier) {
     NavHost(navController, startDestination = "home", modifier = modifier) {
         composable("home") { MainScreen() }
         composable("events") { EventsScreen() }
         composable("history") { HistoryScreen() }
+        composable("agenda") { AgendaScreen() }  // Ajoute l'écran Agenda
     }
 }
+
 
 
 // ✅ Modèle d'événement
