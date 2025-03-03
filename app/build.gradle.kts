@@ -81,6 +81,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.0")
     implementation("androidx.work:work-runtime-ktx:2.8.1")
 
+    implementation ("androidx.compose.runtime:runtime-livedata:1.4.0")
     // ✅ Test & Debug
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

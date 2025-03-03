@@ -1,5 +1,6 @@
 package fr.isen.chanvillard.isensmartcompanion
 
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,11 +25,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen() {
-    AssistantUI()
-}
-
-@Composable
-fun AssistantUI() {
     val context = LocalContext.current
     val db = remember { AppDatabase.getDatabase(context) }
     val messageDao = remember { db.messageDao() }
@@ -36,9 +32,25 @@ fun AssistantUI() {
     var userInput by remember { mutableStateOf(TextFieldValue("")) }
     var isLoading by remember { mutableStateOf(false) }
 
-    // Charger l'historique au démarrage
+    // L'état de la conversation actuelle (messages visibles à l'écran)
+    var currentMessages by remember { mutableStateOf<List<Message>>(emptyList()) }
+
+    // Historique des messages stockés dans la base de données
     val messagesFlow = messageDao.getAllMessages()
-    val conversationState by messagesFlow.collectAsState(initial = emptyList())
+    val allMessages by messagesFlow.collectAsState(initial = emptyList())
+
+    // Lors du lancement, l'historique est récupéré mais les messages visibles ne sont pas affichés
+    LaunchedEffect(allMessages) {
+        // Remplir l'historique mais ne pas afficher les anciens messages dans la conversation en cours
+        // Actuellement, on ne met à jour que les messages visibles avec `currentMessages`
+    }
+
+    // Réinitialiser la conversation locale lorsqu'on ferme l'application
+    DisposableEffect(Unit) {
+        onDispose {
+            currentMessages = emptyList() // Réinitialiser les messages visibles à la fermeture de l'application
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -53,12 +65,13 @@ fun AssistantUI() {
 
         Spacer(modifier = Modifier.height(20.dp))
 
+        // Affichage de la conversation en cours (actuellement visible)
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
                 .padding(16.dp)
         ) {
-            items(conversationState) { message ->
+            items(currentMessages) { message ->
                 Column(modifier = Modifier.padding(8.dp)) {
                     Text(text = "👤 ${message.question}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     Text(text = "🤖 ${message.answer}", color = Color.DarkGray, fontSize = 14.sp)
@@ -104,15 +117,16 @@ fun AssistantUI() {
                                     timestamp = System.currentTimeMillis() // Ajouter un timestamp
                                 )
                                 messageDao.insertMessage(message)
+                                currentMessages = listOf(message) // Afficher le message juste envoyé dans l'UI
                             } catch (e: Exception) {
                                 val errorMessage = "Erreur : ${e.localizedMessage}"
-                                messageDao.insertMessage(
-                                    Message(
-                                        question = question,
-                                        answer = errorMessage,
-                                        timestamp = System.currentTimeMillis() // Ajouter un timestamp
-                                    )
+                                val message = Message(
+                                    question = question,
+                                    answer = errorMessage,
+                                    timestamp = System.currentTimeMillis()
                                 )
+                                messageDao.insertMessage(message)
+                                currentMessages = listOf(message) // Afficher l'erreur juste dans l'UI
                             } finally {
                                 isLoading = false
                             }

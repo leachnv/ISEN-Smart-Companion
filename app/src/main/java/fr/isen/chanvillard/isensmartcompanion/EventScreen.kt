@@ -1,5 +1,7 @@
 package fr.isen.chanvillard.isensmartcompanion
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.livedata.observeAsState
 import android.content.Intent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,7 +20,6 @@ import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 import androidx.lifecycle.viewmodel.compose.viewModel
-
 
 @Composable
 fun EventsScreen(agendaViewModel: AgendaViewModel = viewModel()) {
@@ -45,6 +46,9 @@ fun EventsScreen(agendaViewModel: AgendaViewModel = viewModel()) {
             }
         })
     }
+
+    // Observez les événements sélectionnés à partir de ViewModel
+    val selectedEvents by agendaViewModel.selectedEvents.observeAsState(emptyList())
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text(text = "Événements", fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -89,7 +93,7 @@ fun EventsScreen(agendaViewModel: AgendaViewModel = viewModel()) {
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    text = if (event in agendaViewModel.selectedEvents) "Retirer de l'agenda" else "Ajouter à l'agenda",
+                                    text = if (event in selectedEvents) "Retirer de l'agenda" else "Ajouter à l'agenda",
                                     fontSize = 14.sp
                                 )
                             }
