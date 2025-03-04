@@ -20,35 +20,15 @@ import androidx.compose.runtime.livedata.observeAsState // Assure-toi que cette 
 
 import java.text.SimpleDateFormat
 import java.util.*
-
 @Composable
 fun AgendaScreen() {
     val context = LocalContext.current.applicationContext as Application
     val agendaViewModel: AgendaViewModel = viewModel(factory = AgendaViewModelFactory(context))
 
-    // Observer les cours depuis la base de données
     val courses by agendaViewModel.courses.observeAsState(emptyList())
     val selectedEvents by agendaViewModel.selectedEvents.observeAsState(emptyList())
 
     var showDialog by remember { mutableStateOf(false) }
-
-    val dateFormats = listOf(
-        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()),
-        SimpleDateFormat("dd MMMM yyyy", Locale.FRENCH)
-    )
-
-    fun parseDate(dateString: String): Date? {
-        for (format in dateFormats) {
-            try {
-                return format.parse(dateString)
-            } catch (e: Exception) {
-                // Ignore and try the next format
-            }
-        }
-        return null
-    }
-
-    val sortedCourses = courses.sortedBy { course -> parseDate(course.date) } // Corrige ici avec la syntaxe explicite
 
     Column(
         modifier = Modifier
@@ -59,9 +39,8 @@ fun AgendaScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(modifier = Modifier.weight(1f)) {
-            item {
-                Text("Événements Sélectionnés", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            }
+            item { Text("Événements Sélectionnés", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+
             items(selectedEvents) { event ->
                 EventItem(event, isSelected = true, onToggleSelection = {
                     agendaViewModel.toggleEventSelection(it)
@@ -70,13 +49,10 @@ fun AgendaScreen() {
 
             item { Spacer(modifier = Modifier.height(16.dp)) }
 
-            item {
-                Text("Mes Cours", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-            }
-            items(sortedCourses) { course ->
-                CourseItem(course, onDelete = {
-                    agendaViewModel.removeCourse(it)
-                })
+            item { Text("Mes Cours", fontSize = 20.sp, fontWeight = FontWeight.Bold) }
+
+            items(courses) { course ->
+                CourseItem(course, onDelete = { agendaViewModel.removeCourse(it) })
             }
         }
 
@@ -101,6 +77,8 @@ fun AgendaScreen() {
         )
     }
 }
+
+
 
 @Composable
 fun EventItem(event: Event, isSelected: Boolean, onToggleSelection: (Event) -> Unit) {
