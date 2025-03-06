@@ -1,6 +1,5 @@
 package fr.isen.chanvillard.isensmartcompanion
 
-import AgendaViewModel
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -12,7 +11,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -33,10 +31,6 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import fr.isen.chanvillard.isensmartcompanion.ui.theme.ISENSmartCompanionTheme
 
 class EventDetailActivity : ComponentActivity() {
-
-    // Déclarer le ViewModel en utilisant l'activité comme scope
-    private val agendaViewModel: AgendaViewModel by viewModels()
-
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted -> }
 
@@ -49,10 +43,20 @@ class EventDetailActivity : ComponentActivity() {
         val jsonEvent = intent.getStringExtra("event_json")
         val event = Gson().fromJson(jsonEvent, Event::class.java)
 
+        // Ajouter l'événement à l'agenda dès qu'il est cliqué sur la notification
+        val agendaPrefs = getSharedPreferences("AgendaPrefs", Context.MODE_PRIVATE)
+        val existingEvents = agendaPrefs.getStringSet("agenda_events", mutableSetOf()) ?: mutableSetOf()
+        val updatedEvents = existingEvents.toMutableSet()
+
+        // Ajouter l'événement à l'agenda si ce n'est pas déjà fait
+        updatedEvents.add(Gson().toJson(event))
+
+        // Sauvegarder les événements dans les préférences partagées
+        agendaPrefs.edit().putStringSet("agenda_events", updatedEvents).apply()
+
         setContent {
             ISENSmartCompanionTheme {
-                // Passer agendaViewModel à EventDetailScreen
-                EventDetailScreen(event = event, agendaViewModel = agendaViewModel)
+                EventDetailScreen(event, this)
             }
         }
     }
@@ -78,8 +82,9 @@ class EventDetailActivity : ComponentActivity() {
     }
 }
 
+
 @Composable
-fun EventDetailScreen(event: Event, agendaViewModel: AgendaViewModel) {
+fun EventDetailScreen(event: Event, activity: EventDetailActivity) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("event_prefs", Context.MODE_PRIVATE)
     val agendaPrefs = context.getSharedPreferences("AgendaPrefs", Context.MODE_PRIVATE)
@@ -113,13 +118,10 @@ fun EventDetailScreen(event: Event, agendaViewModel: AgendaViewModel) {
 
             if (isReminderSet) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    (context as? EventDetailActivity)?.requestNotificationPermission()
+                    activity.requestNotificationPermission()
                 }
                 scheduleNotification(context, event)
-
-                // Ajout de l'événement dans l'agenda
-                updatedEvents.add(Gson().toJson(event))
-                agendaViewModel.addEventToAgenda(event) // Ajoute l'événement à l'agenda
+                updatedEvents.add(Gson().toJson(event)) // Ajout de l'événement
             } else {
                 updatedEvents.remove(Gson().toJson(event)) // Suppression si rappel désactivé
             }
@@ -133,6 +135,8 @@ fun EventDetailScreen(event: Event, agendaViewModel: AgendaViewModel) {
         }
     }
 }
+
+
 
 fun scheduleNotification(context: Context, event: Event) {
     val workManager = WorkManager.getInstance(context)
