@@ -1,5 +1,6 @@
 package fr.isen.chanvillard.isensmartcompanion
 
+import AgendaViewModel
 import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -11,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -31,24 +33,26 @@ import androidx.compose.material.icons.filled.NotificationsNone
 import fr.isen.chanvillard.isensmartcompanion.ui.theme.ISENSmartCompanionTheme
 
 class EventDetailActivity : ComponentActivity() {
+
+    // Déclarer le ViewModel en utilisant l'activité comme scope
+    private val agendaViewModel: AgendaViewModel by viewModels()
+
     private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                // Permission accordée, l'utilisateur pourra recevoir des notifications
-            }
-        }
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        createNotificationChannel() // Créer le canal de notification
+        createNotificationChannel()
 
-        val jsonEvent = intent.getStringExtra("event_json") // Récupérer l'event en JSON
-        val event = Gson().fromJson(jsonEvent, Event::class.java) // Convertir en objet Event
+        // Récupération de l'Event depuis l'Intent
+        val jsonEvent = intent.getStringExtra("event_json")
+        val event = Gson().fromJson(jsonEvent, Event::class.java)
 
         setContent {
             ISENSmartCompanionTheme {
-                EventDetailScreen(event, this)
+                // Passer agendaViewModel à EventDetailScreen
+                EventDetailScreen(event = event, agendaViewModel = agendaViewModel)
             }
         }
     }
@@ -59,9 +63,7 @@ class EventDetailActivity : ComponentActivity() {
                 "EVENT_REMINDER",
                 "Rappels d'événements",
                 NotificationManager.IMPORTANCE_HIGH
-            ).apply {
-                description = "Notifications pour les rappels d'événements"
-            }
+            ).apply { description = "Notifications pour les rappels d'événements" }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager.createNotificationChannel(channel)
         }
@@ -69,36 +71,31 @@ class EventDetailActivity : ComponentActivity() {
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun requestNotificationPermission() {
-        if (ContextCompat.checkSelfPermission(
-                this,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED) {
             requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 }
 
 @Composable
-fun EventDetailScreen(event: Event, activity: EventDetailActivity) {
+fun EventDetailScreen(event: Event, agendaViewModel: AgendaViewModel) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("event_prefs", Context.MODE_PRIVATE)
+    val agendaPrefs = context.getSharedPreferences("AgendaPrefs", Context.MODE_PRIVATE)
     var isReminderSet by remember { mutableStateOf(prefs.getBoolean(event.id, false)) }
 
-    // Enregistrer les préférences
     val saveReminderPreference = { isEnabled: Boolean ->
         prefs.edit().putBoolean(event.id, isEnabled).apply()
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Button(
-            onClick = { (context as? ComponentActivity)?.finish() }, // Ferme l'activity et revient à la liste
+            onClick = { (context as? ComponentActivity)?.finish() },
             modifier = Modifier.padding(top = 16.dp)
-        ) {
-            Text("Retour aux événements")
-        }
-        Spacer(modifier = Modifier.height(16.dp))
+        ) { Text("Retour aux événements") }
 
+        Spacer(modifier = Modifier.height(16.dp))
         Text(text = event.title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Text(text = "Date: ${event.date}", fontSize = 18.sp)
         Text(text = "Lieu: ${event.location}", fontSize = 18.sp)
@@ -106,17 +103,28 @@ fun EventDetailScreen(event: Event, activity: EventDetailActivity) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(text = event.description, fontSize = 16.sp)
 
-        // Bouton pour activer/désactiver le rappel
         IconButton(onClick = {
             isReminderSet = !isReminderSet
             saveReminderPreference(isReminderSet)
 
+            // Gestion de l'ajout/suppression de l'événement dans l'agenda
+            val existingEvents = agendaPrefs.getStringSet("agenda_events", mutableSetOf()) ?: mutableSetOf()
+            val updatedEvents = existingEvents.toMutableSet()
+
             if (isReminderSet) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    activity.requestNotificationPermission()
+                    (context as? EventDetailActivity)?.requestNotificationPermission()
                 }
                 scheduleNotification(context, event)
+
+                // Ajout de l'événement dans l'agenda
+                updatedEvents.add(Gson().toJson(event))
+                agendaViewModel.addEventToAgenda(event) // Ajoute l'événement à l'agenda
+            } else {
+                updatedEvents.remove(Gson().toJson(event)) // Suppression si rappel désactivé
             }
+
+            agendaPrefs.edit().putStringSet("agenda_events", updatedEvents).apply()
         }) {
             Icon(
                 imageVector = if (isReminderSet) Icons.Filled.Notifications else Icons.Filled.NotificationsNone,
@@ -126,14 +134,9 @@ fun EventDetailScreen(event: Event, activity: EventDetailActivity) {
     }
 }
 
-// ✅ Planifier la notification après 10 secondes
 fun scheduleNotification(context: Context, event: Event) {
     val workManager = WorkManager.getInstance(context)
-
-    val data = workDataOf(
-        "event_title" to event.title,
-        "event_id" to event.id
-    )
+    val data = workDataOf("event_title" to event.title, "event_id" to event.id)
 
     val notificationRequest = OneTimeWorkRequestBuilder<ReminderWorker>()
         .setInitialDelay(10, TimeUnit.SECONDS)
@@ -143,18 +146,18 @@ fun scheduleNotification(context: Context, event: Event) {
     workManager.enqueue(notificationRequest)
 }
 
-// ✅ Worker pour gérer la notification
 class ReminderWorker(context: Context, workerParams: WorkerParameters) : Worker(context, workerParams) {
     override fun doWork(): Result {
         val eventTitle = inputData.getString("event_title") ?: "Événement"
-        val eventId = inputData.getString("event_id") ?: "0" // Pas besoin de le convertir en entier si c'est déjà une chaîne
-        sendNotification(eventTitle, eventId) // Utilise eventId comme chaîne
+        val eventId = inputData.getString("event_id") ?: "0"
+        sendNotification(eventTitle, eventId)
         return Result.success()
     }
 
-    private fun sendNotification(eventTitle: String, eventId: String) { // eventId est maintenant une chaîne
+    private fun sendNotification(eventTitle: String, eventId: String) {
         val context = applicationContext
-        val notificationManager = ContextCompat.getSystemService(context, NotificationManager::class.java) as NotificationManager
+        val notificationManager = ContextCompat.getSystemService(context, NotificationManager::class.java)
+                as NotificationManager
 
         val notification = NotificationCompat.Builder(context, "EVENT_REMINDER")
             .setSmallIcon(R.drawable.ic_notification)
@@ -163,8 +166,6 @@ class ReminderWorker(context: Context, workerParams: WorkerParameters) : Worker(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .build()
 
-        // Utilise eventId comme chaîne pour l'ID de notification
-        notificationManager.notify(eventId.hashCode(), notification) // Utilise hashCode si eventId est une chaîne
+        notificationManager.notify(eventId.hashCode(), notification)
     }
 }
-

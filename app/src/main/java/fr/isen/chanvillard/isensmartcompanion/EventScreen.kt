@@ -1,5 +1,6 @@
 package fr.isen.chanvillard.isensmartcompanion
 
+import AgendaViewModel
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.livedata.observeAsState
 import android.content.Intent
@@ -31,7 +32,8 @@ fun EventsScreen() {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf("") }
 
-    val selectedEvents by agendaViewModel.selectedEvents.observeAsState(emptyList())
+    // Nous n'avons plus besoin de la variable selectedEvents
+    // val selectedEvents by agendaViewModel.selectedEvents.observeAsState(emptyList())
 
     LaunchedEffect(Unit) {
         RetrofitInstance.retrofitService.getEvents().enqueue(object : Callback<List<Event>> {
@@ -73,22 +75,14 @@ fun EventsScreen() {
                                 }
                                 context.startActivity(intent) // 🔹 Utilisation correcte de startActivity
                             },
-                        colors = CardDefaults.cardColors(containerColor = if (event in selectedEvents) Color.Green else Color.Red)
+                        colors = CardDefaults.cardColors(containerColor = Color.LightGray) // Simple couleur neutre
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(event.title, fontSize = 18.sp, fontWeight = FontWeight.Medium)
                             Text("Date: ${event.date}", fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(8.dp))
 
-                            Button(
-                                onClick = { agendaViewModel.toggleEventSelection(event) },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text(
-                                    text = if (event in selectedEvents) "Retirer de l'agenda" else "Ajouter à l'agenda",
-                                    fontSize = 14.sp
-                                )
-                            }
+                            // Nous supprimons le bouton d'ajout/retrait
                         }
                     }
                 }
